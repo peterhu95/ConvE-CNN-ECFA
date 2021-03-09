@@ -20,7 +20,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --model conve --data WN18RR --preprocess -
 YAGO3-10:
 ```
 CUDA_VISIBLE_DEVICES=0 python main.py --model conve --data YAGO3-10 --preprocess --lr 0.001
-···
+```
 
 NELL-995:
 ```
