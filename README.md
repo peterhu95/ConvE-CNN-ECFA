@@ -13,13 +13,16 @@ This repo supports Linux and Python installation via Anaconda.
 The data needed to preprocess once. The --preprocess parameter can be omitted after the first time.
 
 WN18RR:
-`CUDA_VISIBLE_DEVICES=0 python main.py --model conve --data WN18RR --preprocess --CFR_kernels 32 --lr 0.001`
+`CUDA_VISIBLE_DEVICES=0 python main.py --model conve --data WN18RR --preprocess \
+                                       --CFR_kernels 32 --lr 0.001`
 
 YAGO3-10:
-`CUDA_VISIBLE_DEVICES=0 python main.py --model conve --data YAGO3-10 --preprocess --lr 0.001`
+`CUDA_VISIBLE_DEVICES=0 python main.py --model conve --data YAGO3-10 --preprocess \
+                                       --lr 0.001`
 
 NELL-995:
-`CUDA_VISIBLE_DEVICES=0 python main.py --model conve --data NELL-995 --preprocess --lr 0.001 --test-batch-size 64 --batch-size 64`
+`CUDA_VISIBLE_DEVICES=0 python main.py --model conve --data NELL-995 --preprocess \
+                                       --lr 0.001 --test-batch-size 64 --batch-size 64`
 
 # Acknowledgements
 The code is inspired by [ConvE](https://github.com/TimDettmers/ConvE).
