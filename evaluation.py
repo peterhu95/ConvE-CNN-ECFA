@@ -45,10 +45,10 @@ def ranking_and_hits(model1, lp, model2, dev_rank_batcher, vocab, name):
         e2_idx2 = torch.LongTensor(e2_multi2[rowidx, colidx].long().cpu())
         
         pred11 = model1.forward(e1, rel, lp)
-        pred21 = model2.forward(e1, rel, model1.rm_fea)
+        pred21 = model2.forward(e1, rel, model1.rm_fea)  # , model1.rm_emb, e2_idx1
         
         pred12 = model1.forward(e2, rel_reverse, lp)
-        pred22 = model2.forward(e2, rel_reverse, model1.rm_fea)
+        pred22 = model2.forward(e2, rel_reverse, model1.rm_fea)  # , model1.rm_emb, e2_idx2
         
         pred1, pred2 = pred21.data, pred22.data
         e1, e2 = e1.data, e2.data

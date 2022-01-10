@@ -155,9 +155,10 @@ def main(args, model1_path, model2_path):
     print(params)
     print(np.sum(params))
    
-
+    torch.autograd.set_detect_anomaly(True)
     opt1 = torch.optim.Adam(model1.parameters(), lr=args.lr, weight_decay=args.l2)
     opt2 = torch.optim.Adam(model2.parameters(), lr=args.lr, weight_decay=args.l2)
+    
     best_valid_MRR = 0
     best_valid_H1 = 0
     best_valid_H3 = 0
@@ -188,14 +189,15 @@ def main(args, model1_path, model2_path):
             lp = 2./ (1. + np.exp(-10*p)) - 1
             
             pred1 = model1.forward(e1, rel, lp)
-            pred2 = model2.forward(e1, rel, model1.rm_fea.detach()) 
-            loss1 = model1.loss(pred1, e2_multi)
+            pred2 = model2.forward(e1, rel, model1.rm_fea.detach())  # , model1.rm_emb.detach(), e2_idx
+            loss1 = model1.loss(pred1*pred2, e2_multi)
             loss2 = model2.loss(pred2, e2_multi)
+            
             loss1.backward(retain_graph=True)
             loss2.backward()
             opt1.step()
             opt2.step()
-
+            
             train_batcher.state.loss = loss2.cpu()
         
         
@@ -205,7 +207,7 @@ def main(args, model1_path, model2_path):
         with torch.no_grad():
             if (epoch <= args.epochs/3 and epoch % 5 == 0) or (epoch > args.epochs/3 and epoch % 2 == 0):
                 valid_MRR, valid_H1, valid_H3, valid_H10 = ranking_and_hits(model1, lp, model2, dev_rank_batcher, vocab, 'dev_evaluation')
-                if valid_MRR > best_valid_MRR and valid_H1 > best_valid_H1:
+                if (valid_MRR > best_valid_MRR and valid_H1 > best_valid_H1) or (valid_MRR > best_valid_MRR and valid_H3 > best_valid_H3):
                     best_valid_MRR = valid_MRR
                     best_valid_H1 = valid_H1
                     best_valid_H3 = valid_H3
@@ -263,6 +265,7 @@ if __name__ == '__main__':
     parser.add_argument('--label-smoothing', type=float, default=0.1, help='Label smoothing value to use. Default: 0.1')
     parser.add_argument('--hidden-size', type=int, default=9728, help='The side of the hidden layer. The required size changes with the size of the embeddings. Default: 9728 (embedding size 200).')
     parser.add_argument('--spe_name', type=str, default=datetime.datetime.now().strftime("%m%d%H%M%S"), help='define a specific name for current model')
+    parser.add_argument('--CFR_kernels', type=int, default=16, help='The number of kernels for Convolutional Feature Revision. Default: 16.')
 
     args = parser.parse_args()
 

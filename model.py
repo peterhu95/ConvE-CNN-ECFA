@@ -114,9 +114,11 @@ class ConvE(torch.nn.Module):
         print(num_entities, num_relations)
         
         
+        self.w0 = torch.nn.Linear(args.embedding_dim, args.embedding_dim)
+        self.w1 = torch.nn.Linear(args.embedding_dim, args.embedding_dim)
         self.rm_fea = None
         self.rm_emb = None
-        
+        self.classifier = torch.nn.Linear(args.embedding_dim, num_entities)
         
     def init(self):
         xavier_normal_(self.emb_e.weight.data)
@@ -140,17 +142,14 @@ class ConvE(torch.nn.Module):
         self.rm_fea = x
         
         x = grad_reverse(x, scale)
-        
         x = self.hidden_drop(x)
         x = self.bn2(x)
         x = F.relu(x)
         
-        x = torch.mm(x, self.emb_e.weight.transpose(1,0))
-        x += self.b.expand_as(x)
+        x = self.classifier(x)
         pred = torch.sigmoid(x)
         
         return pred
-
 
 class ConvE2(torch.nn.Module):
     def __init__(self, args, num_entities, num_relations):
@@ -178,36 +177,56 @@ class ConvE2(torch.nn.Module):
         
         self.att = torch.nn.Sequential(
                    torch.nn.Linear(args.embedding_dim * 2, args.embedding_dim),
-                   torch.nn.Tanh(),
+                   torch.nn.LeakyReLU(),
                    torch.nn.Linear(args.embedding_dim, 2),
                    torch.nn.Softmax(dim=1)
                    
         )
         
-        # Hout = (Hin + 2*padding - dilation*(kernel_size-1) -1)/stride + 1
-        # Wout = (Win + 2*padding - dilation*(kernel_size-1) -1)/stride + 1
-        self.conv_aggr = torch.nn.Conv2d(1, 16, (2, 2), 1, 1, bias=args.use_bias)  # (d + 2*1 -1*(2-1) - 1)/1 + 1 = 201 when d=200. (2 + 2*1 - 1*(2-1) - 1)/1 + 1 = 3
-        self.cal_fc = torch.nn.Linear(16*3*201, args.embedding_dim)
-        self.cal_bn = torch.nn.BatchNorm2d(16)
+        self.conv_aggr = torch.nn.Conv2d(1, args.CFR_kernels, (2, 2), 1, 1, bias=args.use_bias)
+        self.cal_fc = torch.nn.Linear(args.CFR_kernels*3*201, args.embedding_dim)
+        self.cal_bn = torch.nn.BatchNorm2d(args.CFR_kernels)
+        self.com_trans = torch.nn.Sequential(
+                          torch.nn.Linear(args.embedding_dim, args.embedding_dim),
+                          torch.nn.LeakyReLU()
+                          )
         
+        self.unrev = None
+
         
     def init(self):
         xavier_normal_(self.emb_e.weight.data)
         #xavier_normal_(self.emb_rel.weight.data)
         
-    def conv_aggr_layer(self, fea, rm_fea):  #(bs, d)
+    def conv_aggr_layer(self, fea, rm_fea):
+        rm_fea = self.com_trans(rm_fea)
+        rm_fea = torch.nn.functional.normalize(rm_fea,p=2,dim=1)
+        fea = torch.nn.functional.normalize(fea,p=2,dim=1)
         bs = fea.shape[0]
-        x = torch.cat((fea, rm_fea), dim=1)  # (bs, 2*d)
+        x = torch.cat((fea, rm_fea), dim=1)
         x = x.view(bs, 1, 2, self.args.embedding_dim)
-        x = self.conv_aggr(x)  # (bs, 16, 3, 201)
+        x = self.conv_aggr(x)
         x = self.cal_bn(x)
         x = F.relu(x)
         x = self.feature_map_drop(x)
         x = x.view(x.shape[0], -1)
-        x = self.cal_fc(x)  # (bs, d)
+        x = self.cal_fc(x)
         return x
+    
+    def att_layer(self, fea, rm_fea):
+        x = torch.cat((fea, rm_fea), dim=1)
+        att_weight = self.att(x)
+        fea_w = att_weight[:, 0].unsqueeze(1)
+        rmfea_w = att_weight[:, 1].unsqueeze(1)
+        return fea*fea_w + rm_fea*rmfea_w
 
-    def forward(self, e1, rel, rm_fea): # , rm_emb, e2_idx
+    def proj(self, fea, rm_fea):
+        norm_val_pow = torch.matmul(rm_fea, rm_fea.transpose(0,1)).diag().unsqueeze(1)
+        res = torch.matmul(fea,rm_fea.transpose(0,1)).diag().unsqueeze(1).div(norm_val_pow)
+        res = res*rm_fea
+        return res
+
+    def forward(self, e1, rel, rm_fea):
         e1_embedded= self.emb_e(e1).view(-1, 1, self.emb_dim1, self.emb_dim2)
         rel_embedded = self.emb_rel(rel).view(-1, 1, self.emb_dim1, self.emb_dim2)
         stacked_inputs = torch.cat([e1_embedded, rel_embedded], 2)
@@ -219,17 +238,20 @@ class ConvE2(torch.nn.Module):
         x = self.feature_map_drop(x)
         x = x.view(x.shape[0], -1)
         x = self.fc(x)
-
+        
+        self.unrev = x
         x = self.conv_aggr_layer(x, rm_fea)
         
         x = self.hidden_drop(x)
         x = self.bn2(x)
         x = F.relu(x)
-
+        
         x = torch.mm(x, self.emb_e.weight.transpose(1,0))
         x += self.b.expand_as(x)
         pred = torch.sigmoid(x)
+        
         return pred
+
 
 # Add your own model here
 
