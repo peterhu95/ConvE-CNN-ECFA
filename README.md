@@ -1,4 +1,4 @@
-# ConvE-CFR
+# ConvE-ECFA<sub>CNN</sub>
 Source code for model ConvE-ECFA<sub>CNN</sub>
 ## Installation
 
