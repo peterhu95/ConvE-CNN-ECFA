@@ -1,5 +1,5 @@
 # ConvE-CFR
-Source code for model ConvE-ECFA_<sub>CNN</sub>
+Source code for model ConvE-ECFA<sub>CNN</sub>
 ## Installation
 
 This repo supports Linux and Python installation via Anaconda. 
