@@ -28,7 +28,5 @@ NELL-995:
 CUDA_VISIBLE_DEVICES=0 python main.py --model conve --data NELL-995 --preprocess --lr 0.001 --test-batch-size 64 --batch-size 64
 ```
 
-# Acknowledgements
-The code is inspired by [ConvE](https://github.com/TimDettmers/ConvE).
 
 
