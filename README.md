@@ -1,6 +1,6 @@
 
 # ConvE-CNN-ECFA
-Source code for model ConvE-ECFA<sub>CNN</sub>
+Source code for model ConvE-CNN-ECFA
 ## Installation
 
 This repo supports Linux and Python installation via Anaconda. 
