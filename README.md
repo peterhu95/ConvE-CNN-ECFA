@@ -1,5 +1,5 @@
 
-# ConvE-ECFA<sub>CNN</sub>
+# ConvE-CNN-ECFA
 Source code for model ConvE-ECFA<sub>CNN</sub>
 ## Installation
 
